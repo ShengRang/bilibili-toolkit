@@ -11,8 +11,10 @@ enable = false
 enable = false
 
 # 每日任务(观看/分享/登陆)
+# coin_exp 0-50, 50就是投5个币
 [level_task]
-enable = false
+enable = true
+coin_exp = 20
 
 # 一键五连(点赞/投币/收藏/观看/分享)
 [combo]

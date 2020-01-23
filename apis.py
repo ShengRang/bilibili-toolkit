@@ -375,6 +375,32 @@ async def get_attention_video_or_random(cookie, suname):
                 continue
 
 
+# 随机得到一组av号，至少包含 cnt 个 av_num 的集合
+async def get_attention_video_or_random_set(cookie, suname, cnt=1):
+    follows = await get_all_follows(cookie, suname)
+    video_set = set()
+    for mid in follows:
+        url = f"https://space.bilibili.com/ajax/member/getSubmitVideos?mid={mid}&pagesize=100&tid=0"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
+            "Cookie": cookie
+        }
+        response = await request.req_add_job('get', url, headers=headers, suname=suname)
+        response = json.loads(response)
+        datalen = len(response['data']['vlist'])
+        for i in range(0, datalen):
+            aid = response['data']['vlist'][i]['aid']
+            video_set.add(aid)
+        if len(video_set) >= cnt:
+            break
+    while len(video_set) < cnt:
+        av_num = random.randint(10000000, 67967399)
+        cid = await get_av_cid(av_num, cookie, suname)
+        if cid != 0:
+            video_set.add(av_num)
+    return video_set
+
+
 # 随机分享一个视频，用于完成每日任务
 async def share_random(cookie, access_key, suname):
     av_num = await get_attention_video_or_random(cookie, suname)
@@ -479,6 +505,25 @@ async def watch_av(av_num, uid, csrf, cookie, suname):
     response = await request.req_add_job('post', url, headers=headers, data=data, suname=suname)
     response = json.loads(response)
     printer.printer(f"观看视频{av_num}回显:{response}", "INFO", "blue")
+
+
+# 对视频投币
+async def give_coin(aid, csrf, cookie, suname):
+    url = f"https://api.bilibili.com/x/web-interface/coin/add"
+    data = {
+        'aid': aid,
+        "multiply": "1",
+        'csrf': csrf,
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36",
+        "Referer": f"https://www.bilibili.com/video/av{aid}",
+        "Cookie": cookie
+    }
+    response = await request.req_add_job('post', url, headers=headers, data=data, suname=suname)
+    response = json.loads(response)
+    printer.printer(f"投币视频{aid}回显:{response}", "INFO", "blue")
+    return response
 
 
 # 根据av号一键三连
@@ -832,6 +877,20 @@ async def sliver_to_coin(cookie, csrf, suname):
     response = await request.req_add_job('post', url, data=data, headers=headers, suname=suname)
     response = json.loads(response)
     printer.printer(f"银瓜子兑换硬币回显:{response}", "INFO", "blue")
+    return response
+
+
+# 查询直播站实物礼物列表
+async def query_daily_task(cookie, suname):
+    url = f"https://account.bilibili.com/home/reward"
+    headers = {
+        "Referer": "https://account.bilibili.com/account/home",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36",
+        "Cookie": cookie
+    }
+    response = await request.req_add_job('get', url, headers=headers, suname=suname)
+    response = json.loads(response)
+    printer.printer(f"{suname}查询主站任务回显:{response['data']}", "INFO", "blue")
     return response
 
 

@@ -87,9 +87,36 @@ async def follow_run(follow_uid, cookie, csrf, suname):
     await follow(follow_uid, cookie, csrf, suname)
 
 
-async def level_task_run(uid, access_key, cookie, csrf, suname):
-    await watch_av_random(uid, csrf, cookie, suname)
-    await share_random(cookie, access_key, suname)
+async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0):
+    coin_exp = max(min(coin_exp, 50), 0)
+
+    def get_thunk():
+        vds = set()
+
+        async def fetch_aid():
+            nonlocal vds
+            if vds:
+                return vds.pop()
+            else:
+                vds = await get_attention_video_or_random_set(cookie, suname, 20)
+                return vds.pop()
+        return fetch_aid
+
+    fetch_aid = get_thunk()
+
+    while True:
+        daily_data = (await query_daily_task(cookie, suname)).get('data', {})
+        if not daily_data.get('watch_av'):
+            await watch_av_random(uid, csrf, cookie, suname)
+        if not daily_data.get('share_av'):
+            await share_random(cookie, access_key, suname)
+        if daily_data.get('coins_av', 0) < coin_exp:
+            s = daily_data.get('coins_av', 0)
+            while s < coin_exp:
+                coin_resp = await give_coin(await fetch_aid(), csrf, cookie, suname)
+                if coin_resp.get('code', -1) == 0:
+                    s += 10
+        await asyncio.sleep(86400)
 
 
 async def make_fake_info_run(uid, cookie, csrf, suname):

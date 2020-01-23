@@ -81,7 +81,7 @@ class Main:
         if config['make_fake_userinfo']['enable']:
             await make_fake_info_run(uid, cookie, csrf, uname)
         if config['level_task']['enable']:
-            await level_task_run(uid, access_token, cookie, csrf, uname)
+            await level_task_run(uid, access_token, cookie, csrf, uname, int(config['level_task']['coin_exp']))
         if config['combo']['enable']:
             aid_list = config['combo']['av_list']
             for aid in aid_list:
