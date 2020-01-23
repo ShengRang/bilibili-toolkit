@@ -24,6 +24,7 @@ class Request:
         self.ssion = {}
         # 工作队列
         self.que = asyncio.Queue()
+        self.query_limit_sem = asyncio.Semaphore(15)
         self.form_data = aiohttp.FormData()
         self.loop = loop or asyncio.get_event_loop()
 
@@ -39,15 +40,16 @@ class Request:
                     proxy = f'http://{temp}'
                 else:
                     proxy = None
-                async with getattr(self.ssion[suname], method)(
-                        url, proxy=proxy, verify_ssl=False, timeout=20,
-                        **kwargs) as r:
+                async with self.query_limit_sem:
+                    async with getattr(self.ssion[suname], method)(
+                            url, proxy=proxy, verify_ssl=False, timeout=20,
+                            **kwargs) as r:
 
-                    # text()函数相当于requests中的r.text，r.read()相当于requests中的r.content
-                    data = await r.read()
-                    await r.release()
-                    fut.set_result(data)
-                    return data
+                        # text()函数相当于requests中的r.text，r.read()相当于requests中的r.content
+                        data = await r.read()
+                        await r.release()
+                        fut.set_result(data)
+                        return data
 
             except Exception as e:
                 traceback.print_exc()
