@@ -124,6 +124,7 @@ async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0, fast
                 fast_skip = True
         if fast_skip:
             await asyncio.sleep(random.randint(7, 15))
+            continue
         if fast_coin:
             # maybe gauss distribution will be better
             await asyncio.sleep(4*60*60 + random.randint(-600, 600))
