@@ -87,7 +87,7 @@ async def follow_run(follow_uid, cookie, csrf, suname):
     await follow(follow_uid, cookie, csrf, suname)
 
 
-async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0):
+async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0, fast_coin=False):
     coin_exp = max(min(coin_exp, 50), 0)
 
     def get_thunk():
@@ -98,7 +98,7 @@ async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0):
             if vds:
                 return vds.pop()
             else:
-                vds = await get_attention_video_or_random_set(cookie, suname, 20)
+                vds = await get_attention_video_or_random_set(cookie, suname, 30)
                 return vds.pop()
         return fetch_aid
 
@@ -112,11 +112,15 @@ async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0):
             await share_random(cookie, access_key, suname)
         if daily_data.get('coins_av', 0) < coin_exp:
             s = daily_data.get('coins_av', 0)
-            while s < coin_exp:
-                coin_resp = await give_coin(await fetch_aid(), csrf, cookie, suname)
-                if coin_resp.get('code', -1) == 0:
-                    s += 10
-        await asyncio.sleep(86400)
+            aid_list = await asyncio.gather(*[fetch_aid() for _ in range(int((coin_exp - s)/10))])
+            coin_resp_list = await asyncio.gather(*[give_coin(aid, csrf, cookie, suname) for aid in aid_list])
+            gain = sum([(10 if coin_resp.get('code', -1) == 0 else 0) for coin_resp in coin_resp_list])
+            printer.printer(f'给 {aid_list} 投币得到经验 {gain}，投币前今日投币经验为 {s}, 快速投币开启: {fast_coin}', "INFO", "red")
+        if fast_coin:
+            # maybe gauss distribution will be better
+            await asyncio.sleep(4*60*60 + random.randint(-600, 600))
+        else:
+            await asyncio.sleep(86400)
 
 
 async def make_fake_info_run(uid, cookie, csrf, suname):

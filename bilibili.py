@@ -19,6 +19,7 @@ class Main:
         self.cookies = []
         self.msgs = []
         self.threads = 0
+        self.loop = None
 
     def run(self):
         if os.path.exists("cookies.txt"):
@@ -28,7 +29,7 @@ class Main:
         elif os.path.exists("accounts.txt"):
             self.accounts = get_accounts_file('accounts.txt')
         self.msgs = get_message_file("messages.txt")
-        loop = switch_sys_loop()
+        self.loop = loop = switch_sys_loop()
         if self.cookies:
             self.threads = len(self.cookies)
             task_work = [
@@ -81,7 +82,8 @@ class Main:
         if config['make_fake_userinfo']['enable']:
             await make_fake_info_run(uid, cookie, csrf, uname)
         if config['level_task']['enable']:
-            await level_task_run(uid, access_token, cookie, csrf, uname, int(config['level_task']['coin_exp']))
+            self.loop.create_task(level_task_run(uid, access_token, cookie, csrf, uname,
+                                 int(config['level_task']['coin_exp']), config['level_task']['fast_coin']))
         if config['combo']['enable']:
             aid_list = config['combo']['av_list']
             for aid in aid_list:
@@ -152,8 +154,8 @@ class Main:
                 await comment_reply_run(oid, otype, message, root, parent, cookie, csrf, uname)
             else:
                 printer.printer(f"预置信息数为0,不再进行评论", "Info", "blue")
-        await request.ssion[uname].close()
-        del request.ssion[uname]
+        # await request.ssion[uname].close()
+        # del request.ssion[uname]
 
 
 Main().run()

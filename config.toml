@@ -14,7 +14,8 @@ enable = false
 # coin_exp 0-50, 50就是投5个币
 [level_task]
 enable = true
-coin_exp = 20
+coin_exp = 10
+fast_coin = true
 
 # 一键五连(点赞/投币/收藏/观看/分享)
 [combo]
