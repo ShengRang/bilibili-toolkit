@@ -92,15 +92,17 @@ async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0, fast
 
     def get_thunk():
         vds = set()
+        mutex = asyncio.Lock()
 
-        async def fetch_aid():
-            nonlocal vds
-            if vds:
-                return vds.pop()
-            else:
-                vds = await get_attention_video_or_random_set(cookie, suname, 30)
-                return vds.pop()
-        return fetch_aid
+        async def _fetch_aid():
+            nonlocal vds, mutex
+            async with mutex:
+                if vds:
+                    return vds.pop()
+                else:
+                    vds = await get_attention_video_or_random_set(cookie, suname, 90)
+                    return vds.pop()
+        return _fetch_aid
 
     fetch_aid = get_thunk()
 
@@ -110,12 +112,18 @@ async def level_task_run(uid, access_key, cookie, csrf, suname, coin_exp=0, fast
             await watch_av_random(uid, csrf, cookie, suname)
         if not daily_data.get('share_av'):
             await share_random(cookie, access_key, suname)
+        fast_skip = False
         if daily_data.get('coins_av', 0) < coin_exp:
             s = daily_data.get('coins_av', 0)
-            aid_list = await asyncio.gather(*[fetch_aid() for _ in range(int((coin_exp - s)/10))])
+            aid_list = await asyncio.gather(*[fetch_aid() for _ in range(int((coin_exp - s) / 10))])
             coin_resp_list = await asyncio.gather(*[give_coin(aid, csrf, cookie, suname) for aid in aid_list])
             gain = sum([(10 if coin_resp.get('code', -1) == 0 else 0) for coin_resp in coin_resp_list])
             printer.printer(f'给 {aid_list} 投币得到经验 {gain}，投币前今日投币经验为 {s}, 快速投币开启: {fast_coin}', "INFO", "red")
+            if gain + s < coin_exp:
+                printer.printer(f"本轮获得经验 {gain} < {coin_exp - s}，启用快速重投", "INFO", "green")
+                fast_skip = True
+        if fast_skip:
+            await asyncio.sleep(random.randint(7, 15))
         if fast_coin:
             # maybe gauss distribution will be better
             await asyncio.sleep(4*60*60 + random.randint(-600, 600))
